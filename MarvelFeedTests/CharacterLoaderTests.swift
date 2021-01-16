@@ -4,9 +4,44 @@ protocol HTTPClient {
     typealias Result = Swift.Result<(Data, HTTPURLResponse), Error>
     func get(_ url: URL, completion: @escaping  (Result) -> Void)
 }
-
-struct Root: Decodable {
     
+private struct Root: Decodable {
+    let data: Data
+    
+    struct Data: Decodable {
+        let results: [RemoteCharacter]
+        
+        struct RemoteCharacter: Decodable {
+            var id: Int
+            var name: String
+            var description: String?
+            var thumbnail: Thumbnail?
+
+            struct Thumbnail: Decodable {
+                let path: URL
+                let ext: String
+
+                enum CodingKeys: String, CodingKey {
+                    case path = "path"
+                    case ext = "extension"
+                }
+
+                var standardMedium: URL {
+                    path.appendingPathComponent("standard_medium").appendingPathExtension(ext)
+                }
+            }
+        }
+    }
+    
+    var characters: [Character] {
+        data.results.map { Character(
+            id: $0.id,
+            name: $0.name,
+            description: $0.description,
+            imageURL: $0.thumbnail?.standardMedium
+            )
+        }
+    }
 }
 
 public struct Character: Equatable {
@@ -28,7 +63,7 @@ class CharacterLoader {
     }
     
     public typealias Result = Swift.Result<[Character], Error>
-
+    
     init(url: URL, client: HTTPClient) {
         self.url = url
         self.client = client
@@ -41,8 +76,8 @@ class CharacterLoader {
                 if response.statusCode == 409 {
                     completion(.failure(.invalidRequest))
                 } else if response.statusCode == 200,
-                    let _ = try? JSONDecoder().decode(Root.self, from: data) {
-                    completion(.success([]))
+                    let root = try? JSONDecoder().decode(Root.self, from: data) {
+                    completion(.success(root.characters))
                 } else {
                     completion(.failure(.invalidData))
                 }
@@ -123,7 +158,29 @@ class CharacterLoaderTests: XCTestCase {
         let (sut, client) = makeSUT()
 
         expect(sut, toCompleteWith: .success([]), when: {
-            client.complete(data: Data("{\"data\": []}".utf8))
+            client.complete(data: makeItemsJSON([]))
+        })
+    }
+    
+    func test_load_deliversSuccessWithJSONItems() {
+        let (sut, client) = makeSUT()
+        
+        let item1 = makeItem(
+            id: 111,
+            name: "a name",
+            description: "a description",
+            thumbnail: .init(path: URL(string: "www.path.com")!, ext: "png")
+        )
+        
+        let item2 = makeItem(
+            id: 123,
+            name: "another name"
+        )
+        
+        let json = makeItemsJSON([item2.json, item1.json])
+
+        expect(sut, toCompleteWith: .success([item2.model, item1.model]), when: {
+            client.complete(data: json)
         })
     }
     
@@ -147,6 +204,37 @@ class CharacterLoaderTests: XCTestCase {
         wait(for: [exp], timeout: 1.0)
         
         XCTAssertEqual(receivedResult, result, file: file, line: line)
+    }
+    
+    private func makeItem(id: Int, name: String, description: String? = nil, thumbnail: Root.Data.RemoteCharacter.Thumbnail? = nil) -> (model: Character, json: [String: Any]) {
+        
+        let item = Character(
+            id: id,
+            name: name,
+            description: description,
+            imageURL: thumbnail.flatMap { $0.path.appendingPathComponent("standard_medium").appendingPathExtension($0.ext)}
+        )
+        
+        let thumbnailJson = thumbnail.flatMap { [
+                "path": $0.path.absoluteString,
+                "extension" : $0.ext
+            ]
+        }
+
+        let json = [
+            "id": id,
+            "name": name,
+            "description": description,
+            "thumbnail": thumbnailJson
+        ].mapValues { $0 }
+        
+        return (item, json)
+    }
+    
+    private func makeItemsJSON(_ items: [[String: Any]]) -> Data {
+        let data = ["results": items]
+        let json = ["data": data]
+        return try! JSONSerialization.data(withJSONObject: json)
     }
     
     class HTTPClientSpy: HTTPClient {
