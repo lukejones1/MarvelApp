@@ -26,7 +26,7 @@ class CharacterLoaderTests: XCTestCase {
     func test_init_doesNotSendRequest() {
         let (_, client) = makeSUT()
         
-        XCTAssertEqual(client.requestCount, 0)
+        XCTAssertEqual(client.urls, [])
     }
     
     func test_load_sendsRequestWithCorrectURL() {
@@ -35,8 +35,17 @@ class CharacterLoaderTests: XCTestCase {
         
         sut.load()
 
-        XCTAssertEqual(client.requestCount, 1)
-        XCTAssertEqual(client.url, url)
+        XCTAssertEqual(client.urls, [url])
+    }
+    
+    func test_loadTwice_sendsRequestWithCorrectURL() {
+        let url = URL(string: "www.another-url.com")!
+        let (sut, client) = makeSUT(url: url)
+        
+        sut.load()
+        sut.load()
+
+        XCTAssertEqual(client.urls, [url, url])
     }
     
     private func makeSUT(url: URL = URL(string: "www.any-url.com")!, file: StaticString = #file, line: UInt = #line) -> (sut: CharacterLoader, client: HTTPClientSpy) {
@@ -46,12 +55,10 @@ class CharacterLoaderTests: XCTestCase {
     }
     
     class HTTPClientSpy: HTTPClient {
-        var requestCount = 0
-        var url: URL?
+        var urls: [URL] = []
 
         func get(_ url: URL) {
-            self.requestCount += 1
-            self.url = url
+            urls.append(url)
         }
     }
 }
