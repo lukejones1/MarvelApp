@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		A3A8206D25B2F040000BA1F3 /* MarvelFeed.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A3A8206325B2F040000BA1F3 /* MarvelFeed.framework */; };
+		A3A8208A25B2F0D6000BA1F3 /* Character.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3A8208925B2F0D6000BA1F3 /* Character.swift */; };
+		A3A8209225B2F29D000BA1F3 /* CharacterLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3A8209125B2F29D000BA1F3 /* CharacterLoader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,6 +27,8 @@
 		A3A8206725B2F040000BA1F3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3A8206C25B2F040000BA1F3 /* MarvelFeedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarvelFeedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3A8207325B2F040000BA1F3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A3A8208925B2F0D6000BA1F3 /* Character.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Character.swift; sourceTree = "<group>"; };
+		A3A8209125B2F29D000BA1F3 /* CharacterLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterLoader.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +71,7 @@
 		A3A8206525B2F040000BA1F3 /* MarvelFeed */ = {
 			isa = PBXGroup;
 			children = (
+				A3A8209025B2F287000BA1F3 /* Character Feature */,
 				A3A8206725B2F040000BA1F3 /* Info.plist */,
 			);
 			path = MarvelFeed;
@@ -78,6 +83,15 @@
 				A3A8207325B2F040000BA1F3 /* Info.plist */,
 			);
 			path = MarvelFeedTests;
+			sourceTree = "<group>";
+		};
+		A3A8209025B2F287000BA1F3 /* Character Feature */ = {
+			isa = PBXGroup;
+			children = (
+				A3A8208925B2F0D6000BA1F3 /* Character.swift */,
+				A3A8209125B2F29D000BA1F3 /* CharacterLoader.swift */,
+			);
+			path = "Character Feature";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -188,6 +202,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A3A8209225B2F29D000BA1F3 /* CharacterLoader.swift in Sources */,
+				A3A8208A25B2F0D6000BA1F3 /* Character.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -384,6 +400,7 @@
 		A3A8207B25B2F040000BA1F3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = F4UL477ZW2;
@@ -402,6 +419,7 @@
 		A3A8207C25B2F040000BA1F3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = F4UL477ZW2;
