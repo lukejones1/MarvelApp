@@ -66,17 +66,10 @@ class CharacterLoaderTests: XCTestCase {
         let clientError = NSError(domain: "client", code: 0)
         let (sut, client) = makeSUT()
         
-        let exp = expectation(description: "Wait for load completion")
-        var receivedErrors: [CharacterLoader.Error] = []
-        sut.load() { error in
-            receivedErrors.append(error)
-            exp.fulfill()
-        }
-        client.complete(error: clientError)
+        expect(sut, toCompleteWith: .connectivity, when: {
+            client.complete(with: clientError)
+        })
         
-        wait(for: [exp], timeout: 1.0)
-        
-        XCTAssertEqual(receivedErrors, [.connectivity])
     }
     
     func test_load_deliversInvalidDataErrorOnNon200Response() {
@@ -84,27 +77,32 @@ class CharacterLoaderTests: XCTestCase {
         let (sut, client) = makeSUT()
         
         sampleCodes.enumerated().forEach { index, code in
-            var receivedErrors: [CharacterLoader.Error] = []
-
-            let exp = expectation(description: "Wait for load completion")
-
-            sut.load() { error in
-                receivedErrors.append(error)
-                exp.fulfill()
-            }
-            
-            client.complete(with: code, at: index)
-            
-            wait(for: [exp], timeout: 1.0)
-            
-            XCTAssertEqual(receivedErrors, [.invalidData])
+            expect(sut, toCompleteWith: .invalidData, when: {
+                client.complete(with: code, at: index)
+            })
         }
     }
     
-    private func makeSUT(url: URL = URL(string: "www.any-url.com")!, file: StaticString = #file, line: UInt = #line) -> (sut: CharacterLoader, client: HTTPClientSpy) {
+    // MARK: Helpers
+    
+    private func makeSUT(url: URL = URL(string: "www.any-url.com")!) -> (sut: CharacterLoader, client: HTTPClientSpy) {
         let client = HTTPClientSpy()
         let sut = CharacterLoader(url: url, client: client)
         return (sut, client)
+    }
+    
+    private func expect(_ sut: CharacterLoader, toCompleteWith error: CharacterLoader.Error, when action: () -> Void, file: StaticString = #file, line: UInt = #line) {
+        let exp = expectation(description: "Wait for load completion")
+        var receivedError: CharacterLoader.Error?
+        sut.load() { (error) in
+            receivedError = error
+            exp.fulfill()
+        }
+        
+        action()
+        wait(for: [exp], timeout: 1.0)
+        
+        XCTAssertEqual(receivedError, error, file: file, line: line)
     }
     
     class HTTPClientSpy: HTTPClient {
@@ -118,7 +116,7 @@ class CharacterLoaderTests: XCTestCase {
             messages.append((url, completion))
         }
         
-        func complete(error: Error, at index: Int = 0) {
+        func complete(with error: Error, at index: Int = 0) {
             messages[index].completion(nil, error)
         }
         
