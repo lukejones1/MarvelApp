@@ -127,7 +127,7 @@ class RemoteCharacterLoaderTests: XCTestCase {
         wait(for: [exp], timeout: 1.0)
     }
     
-    private func makeItem(id: Int, name: String, description: String? = nil, thumbnail: Root.Data.RemoteCharacter.Thumbnail? = nil) -> (model: Character, json: [String: Any]) {
+    private func makeItem(id: Int, name: String, description: String? = nil, thumbnail: MarvelCharacterMapper.Root.Data.RemoteCharacter.Thumbnail? = nil) -> (model: Character, json: [String: Any]) {
         
         let item = Character(
             id: id,
