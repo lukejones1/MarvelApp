@@ -1,7 +1,7 @@
 import Foundation
 
 protocol HTTPClient {
-    func get(_ url: URL)
+    func get(_ url: URL, completion: @escaping  (Error) -> Void)
 }
 
 class CharacterLoader {
@@ -9,13 +9,19 @@ class CharacterLoader {
     private let url: URL
     private let client: HTTPClient
     
+    enum Error: Swift.Error {
+        case connectivity
+    }
+    
     init(url: URL, client: HTTPClient) {
         self.url = url
         self.client = client
     }
     
-    func load() {
-        client.get(url)
+    func load(completion: @escaping (Error) -> Void) {
+        client.get(url) { error in
+            completion(.connectivity)
+        }
     }
 }
 
@@ -33,7 +39,7 @@ class CharacterLoaderTests: XCTestCase {
         let url = URL(string: "www.another-url.com")!
         let (sut, client) = makeSUT(url: url)
         
-        sut.load()
+        sut.load() { _ in }
 
         XCTAssertEqual(client.urls, [url])
     }
@@ -42,10 +48,27 @@ class CharacterLoaderTests: XCTestCase {
         let url = URL(string: "www.another-url.com")!
         let (sut, client) = makeSUT(url: url)
         
-        sut.load()
-        sut.load()
+        sut.load() { _ in }
+        sut.load() { _ in }
 
         XCTAssertEqual(client.urls, [url, url])
+    }
+    
+    func test_load_deliversConnectivityErrorOnClientError() {
+        let clientError = NSError(domain: "client", code: 0)
+        let (sut, client) = makeSUT()
+        
+        let exp = expectation(description: "Wait for load completion")
+        var receivedErrors: [CharacterLoader.Error] = []
+        sut.load() { error in
+            receivedErrors.append(error)
+            exp.fulfill()
+        }
+        client.complete(with: clientError)
+        
+        wait(for: [exp], timeout: 1.0)
+        
+        XCTAssertEqual(receivedErrors, [.connectivity])
     }
     
     private func makeSUT(url: URL = URL(string: "www.any-url.com")!, file: StaticString = #file, line: UInt = #line) -> (sut: CharacterLoader, client: HTTPClientSpy) {
@@ -56,9 +79,15 @@ class CharacterLoaderTests: XCTestCase {
     
     class HTTPClientSpy: HTTPClient {
         var urls: [URL] = []
+        var completions: [(Error) -> Void] = []
 
-        func get(_ url: URL) {
+        func get(_ url: URL, completion: @escaping  (Error) -> Void) {
             urls.append(url)
+            completions.append(completion)
+        }
+        
+        func complete(with error: Error, at index: Int = 0) {
+            completions[index](error)
         }
     }
 }
