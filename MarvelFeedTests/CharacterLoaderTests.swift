@@ -5,6 +5,10 @@ protocol HTTPClient {
     func get(_ url: URL, completion: @escaping  (Result) -> Void)
 }
 
+struct Root: Decodable {
+    
+}
+
 public struct Character: Equatable {
     public var id: Int
     public var name: String
@@ -32,8 +36,13 @@ class CharacterLoader {
     func load(completion: @escaping (Result) -> Void) {
         client.get(url) { result in
             switch result {
-            case let .success(_, response):
-                completion(.failure(.invalidData))
+            case let .success((data, response)):
+                if response.statusCode == 200,
+                    let _ = try? JSONDecoder().decode(Root.self, from: data) {
+                    completion(.success([]))
+                } else {
+                    completion(.failure(.invalidData))
+                }
             case .failure:
                 completion(.failure(.connectivity))
             }
@@ -91,11 +100,19 @@ class CharacterLoaderTests: XCTestCase {
         }
     }
     
-    func test_load_deliversErrorOnInvalidJSON() {
+    func test_load_deliversInvalidDataErrorOnInvalidJSON() {
         let (sut, client) = makeSUT()
 
         expect(sut, toCompleteWith: .failure(.invalidData), when: {
             client.complete(data: Data("invalid json".utf8))
+        })
+    }
+    
+    func test_load_deliversSuccessOnValidJSON() {
+        let (sut, client) = makeSUT()
+
+        expect(sut, toCompleteWith: .success([]), when: {
+            client.complete(data: Data("{\"data\": []}".utf8))
         })
     }
     
