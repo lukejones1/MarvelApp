@@ -11,7 +11,7 @@ class RemoteCharacterLoaderTests: XCTestCase {
     }
     
     func test_load_sendsRequestWithCorrectURL() {
-        let url = URL(string: "www.another-url.com")!
+        let url = anyURL()
         let (sut, client) = makeSUT(url: url)
         
         sut.load() { _ in }
@@ -20,7 +20,7 @@ class RemoteCharacterLoaderTests: XCTestCase {
     }
     
     func test_loadTwice_sendsRequestWithCorrectURL() {
-        let url = URL(string: "www.another-url.com")!
+        let url = anyURL()
         let (sut, client) = makeSUT(url: url)
         
         sut.load() { _ in }
@@ -98,7 +98,7 @@ class RemoteCharacterLoaderTests: XCTestCase {
     
     // MARK: Helpers
     
-    private func makeSUT(url: URL = URL(string: "www.any-url.com")!) -> (sut: RemoteCharacterLoader, client: HTTPClientSpy) {
+    private func makeSUT(url: URL = anyURL()) -> (sut: RemoteCharacterLoader, client: HTTPClientSpy) {
         let client = HTTPClientSpy()
         let sut = RemoteCharacterLoader(url: url, client: client)
         return (sut, client)

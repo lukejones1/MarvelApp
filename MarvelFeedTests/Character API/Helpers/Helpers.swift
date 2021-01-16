@@ -11,3 +11,11 @@ extension XCTestCase {
 func anyURL() -> URL {
     URL(string: "http://any-url.com")!
 }
+
+func anyError() -> NSError {
+    NSError(domain: "any error", code: 0)
+}
+
+func anyData() -> Data {
+    Data("any data".utf8)
+}
