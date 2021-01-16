@@ -17,7 +17,7 @@ class RemoteCharacterLoader: CharacterLoader {
     }
 
     func load(completion: @escaping (CharacterLoader.Result) -> Void) {
-        client.get(url) { result in
+        client.get(from: url) { result in
             switch result {
             case let .success((data, response)):
                 do {
