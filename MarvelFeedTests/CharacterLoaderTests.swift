@@ -78,16 +78,18 @@ class CharacterLoaderTests: XCTestCase {
     }
     
     class HTTPClientSpy: HTTPClient {
-        var urls: [URL] = []
-        var completions: [(Error) -> Void] = []
+        var messages: [(url: URL, completion: (Error) -> Void)] = []
+        
+        var urls: [URL] {
+            return messages.map { $0.url }
+        }
 
         func get(_ url: URL, completion: @escaping  (Error) -> Void) {
-            urls.append(url)
-            completions.append(completion)
+            messages.append((url, completion))
         }
         
         func complete(with error: Error, at index: Int = 0) {
-            completions[index](error)
+            messages[index].completion(error)
         }
     }
 }
