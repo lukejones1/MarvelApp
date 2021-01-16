@@ -13,7 +13,7 @@ public struct Character: Equatable {
     public var id: Int
     public var name: String
     public var description: String?
-    public var avatarURL: URL?
+    public var imageURL: URL?
 }
 
 class CharacterLoader {
@@ -24,10 +24,11 @@ class CharacterLoader {
     enum Error: Swift.Error {
         case connectivity
         case invalidData
+        case invalidRequest
     }
     
     public typealias Result = Swift.Result<[Character], Error>
-    
+
     init(url: URL, client: HTTPClient) {
         self.url = url
         self.client = client
@@ -37,7 +38,9 @@ class CharacterLoader {
         client.get(url) { result in
             switch result {
             case let .success((data, response)):
-                if response.statusCode == 200,
+                if response.statusCode == 409 {
+                    completion(.failure(.invalidRequest))
+                } else if response.statusCode == 200,
                     let _ = try? JSONDecoder().decode(Root.self, from: data) {
                     completion(.success([]))
                 } else {
@@ -98,6 +101,14 @@ class CharacterLoaderTests: XCTestCase {
                 client.complete(with: code, at: index)
             })
         }
+    }
+    
+    func test_load_deliversInvalidRequestErrorOn409Response() {
+        let (sut, client) = makeSUT()
+
+        expect(sut, toCompleteWith: .failure(.invalidRequest), when: {
+            client.complete(with: 409)
+        })
     }
     
     func test_load_deliversInvalidDataErrorOnInvalidJSON() {
