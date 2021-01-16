@@ -1,96 +1,8 @@
 import Foundation
-
-protocol HTTPClient {
-    typealias Result = Swift.Result<(Data, HTTPURLResponse), Error>
-    func get(_ url: URL, completion: @escaping  (Result) -> Void)
-}
-    
-private struct Root: Decodable {
-    let data: Data
-    
-    struct Data: Decodable {
-        let results: [RemoteCharacter]
-        
-        struct RemoteCharacter: Decodable {
-            var id: Int
-            var name: String
-            var description: String?
-            var thumbnail: Thumbnail?
-
-            struct Thumbnail: Decodable {
-                let path: URL
-                let ext: String
-
-                enum CodingKeys: String, CodingKey {
-                    case path = "path"
-                    case ext = "extension"
-                }
-
-                var standardMedium: URL {
-                    path.appendingPathComponent("standard_medium").appendingPathExtension(ext)
-                }
-            }
-        }
-    }
-    
-    var characters: [Character] {
-        data.results.map { Character(
-            id: $0.id,
-            name: $0.name,
-            description: $0.description,
-            imageURL: $0.thumbnail?.standardMedium
-            )
-        }
-    }
-}
-
-public struct Character: Equatable {
-    public var id: Int
-    public var name: String
-    public var description: String?
-    public var imageURL: URL?
-}
-
-class CharacterLoader {
-    
-    private let url: URL
-    private let client: HTTPClient
-    
-    enum Error: Swift.Error {
-        case connectivity
-        case invalidData
-        case invalidRequest
-    }
-    
-    public typealias Result = Swift.Result<[Character], Error>
-    
-    init(url: URL, client: HTTPClient) {
-        self.url = url
-        self.client = client
-    }
-    
-    func load(completion: @escaping (Result) -> Void) {
-        client.get(url) { result in
-            switch result {
-            case let .success((data, response)):
-                if response.statusCode == 409 {
-                    completion(.failure(.invalidRequest))
-                } else if response.statusCode == 200,
-                    let root = try? JSONDecoder().decode(Root.self, from: data) {
-                    completion(.success(root.characters))
-                } else {
-                    completion(.failure(.invalidData))
-                }
-            case .failure:
-                completion(.failure(.connectivity))
-            }
-        }
-    }
-}
-
 import XCTest
+@testable import MarvelFeed
 
-class CharacterLoaderTests: XCTestCase {
+class RemoteCharacterLoaderTests: XCTestCase {
     
     func test_init_doesNotSendRequest() {
         let (_, client) = makeSUT()
@@ -121,7 +33,7 @@ class CharacterLoaderTests: XCTestCase {
         let clientError = NSError(domain: "client", code: 0)
         let (sut, client) = makeSUT()
         
-        expect(sut, toCompleteWith: .failure(.connectivity), when: {
+        expect(sut, toCompleteWith: .failure(RemoteCharacterLoader.Error.connectivity), when: {
             client.complete(with: clientError)
         })
         
@@ -132,7 +44,7 @@ class CharacterLoaderTests: XCTestCase {
         let (sut, client) = makeSUT()
         
         sampleCodes.enumerated().forEach { index, code in
-            expect(sut, toCompleteWith: .failure(.invalidData), when: {
+            expect(sut, toCompleteWith: .failure(RemoteCharacterLoader.Error.invalidData), when: {
                 client.complete(with: code, at: index)
             })
         }
@@ -141,7 +53,7 @@ class CharacterLoaderTests: XCTestCase {
     func test_load_deliversInvalidRequestErrorOn409Response() {
         let (sut, client) = makeSUT()
 
-        expect(sut, toCompleteWith: .failure(.invalidRequest), when: {
+        expect(sut, toCompleteWith: .failure(RemoteCharacterLoader.Error.invalidRequest), when: {
             client.complete(with: 409)
         })
     }
@@ -149,7 +61,7 @@ class CharacterLoaderTests: XCTestCase {
     func test_load_deliversInvalidDataErrorOnInvalidJSON() {
         let (sut, client) = makeSUT()
 
-        expect(sut, toCompleteWith: .failure(.invalidData), when: {
+        expect(sut, toCompleteWith: .failure(RemoteCharacterLoader.Error.invalidData), when: {
             client.complete(data: Data("invalid json".utf8))
         })
     }
@@ -186,24 +98,33 @@ class CharacterLoaderTests: XCTestCase {
     
     // MARK: Helpers
     
-    private func makeSUT(url: URL = URL(string: "www.any-url.com")!) -> (sut: CharacterLoader, client: HTTPClientSpy) {
+    private func makeSUT(url: URL = URL(string: "www.any-url.com")!) -> (sut: RemoteCharacterLoader, client: HTTPClientSpy) {
         let client = HTTPClientSpy()
-        let sut = CharacterLoader(url: url, client: client)
+        let sut = RemoteCharacterLoader(url: url, client: client)
         return (sut, client)
     }
     
-    private func expect(_ sut: CharacterLoader, toCompleteWith result: CharacterLoader.Result, when action: () -> Void, file: StaticString = #file, line: UInt = #line) {
+    private func expect(_ sut: RemoteCharacterLoader, toCompleteWith expectedResult: RemoteCharacterLoader.Result, when action: () -> Void, file: StaticString = #file, line: UInt = #line) {
         let exp = expectation(description: "Wait for load completion")
-        var receivedResult: CharacterLoader.Result?
-        sut.load() { result in
-            receivedResult = result
+        
+        sut.load { receivedResult in
+            switch (receivedResult, expectedResult) {
+            case let (.success(receivedItems), .success(expectedItems)):
+                XCTAssertEqual(receivedItems, expectedItems, file: file, line: line)
+                
+            case let (.failure(receivedError as RemoteCharacterLoader.Error), .failure(expectedError as RemoteCharacterLoader.Error)):
+                XCTAssertEqual(receivedError, expectedError, file: file, line: line)
+                
+            default:
+                XCTFail("Expected result \(expectedResult) got \(receivedResult) instead", file: file, line: line)
+            }
+            
             exp.fulfill()
         }
         
         action()
-        wait(for: [exp], timeout: 1.0)
         
-        XCTAssertEqual(receivedResult, result, file: file, line: line)
+        wait(for: [exp], timeout: 1.0)
     }
     
     private func makeItem(id: Int, name: String, description: String? = nil, thumbnail: Root.Data.RemoteCharacter.Thumbnail? = nil) -> (model: Character, json: [String: Any]) {

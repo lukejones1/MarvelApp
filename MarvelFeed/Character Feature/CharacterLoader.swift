@@ -1,6 +1,6 @@
 import Foundation
 
 protocol CharacterLoader {
-    typealias Result = Swift.Result<Character, Error>
+    typealias Result = Swift.Result<[Character], Error>
     func load(completion: @escaping (Result) -> Void)
 }
