@@ -5,6 +5,13 @@ protocol HTTPClient {
     func get(_ url: URL, completion: @escaping  (Result) -> Void)
 }
 
+public struct Character: Equatable {
+    public var id: Int
+    public var name: String
+    public var description: String?
+    public var avatarURL: URL?
+}
+
 class CharacterLoader {
     
     private let url: URL
@@ -26,10 +33,7 @@ class CharacterLoader {
         client.get(url) { result in
             switch result {
             case let .success(_, response):
-                guard response.statusCode == 200 else {
-                    completion(.failure(.invalidData))
-                    return
-                }
+                completion(.failure(.invalidData))
             case .failure:
                 completion(.failure(.connectivity))
             }
@@ -87,6 +91,14 @@ class CharacterLoaderTests: XCTestCase {
         }
     }
     
+    func test_load_deliversErrorOnInvalidJSON() {
+        let (sut, client) = makeSUT()
+
+        expect(sut, toCompleteWith: .failure(.invalidData), when: {
+            client.complete(data: Data("invalid json".utf8))
+        })
+    }
+    
     // MARK: Helpers
     
     private func makeSUT(url: URL = URL(string: "www.any-url.com")!) -> (sut: CharacterLoader, client: HTTPClientSpy) {
@@ -124,7 +136,7 @@ class CharacterLoaderTests: XCTestCase {
             messages[index].completion(.failure(error))
         }
         
-        func complete(with statusCode: Int, data: Data = Data(), at index: Int = 0) {
+        func complete(with statusCode: Int = 200, data: Data = Data(), at index: Int = 0) {
             let response = HTTPURLResponse(
                 url: urls[index],
                 statusCode: statusCode,
