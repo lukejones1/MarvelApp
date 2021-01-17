@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+@testable import MarvelFeed
 
 public let publicKey = "637070ffbd28fa31eaaaf0bd5cd5ded2"
 public let privateKey = "69896d095beeaec10c97902652e077955478cc3f"
@@ -20,7 +21,7 @@ class SignedHTTPClientDecorator: HTTPClient {
     func get(from url: URL, completion: @escaping (HTTPClient.Result) -> Void) {
         var components = URLComponents(url: url, resolvingAgainstBaseURL: true)!
         components.queryItems = queryItems
-        decoratee.get(from: components.url!) { _ in }
+        decoratee.get(from: components.url!, completion: completion)
     }
     
     private var queryItems: [URLQueryItem] {
@@ -45,7 +46,6 @@ private func MD5(string: String) -> String {
 
 
 import XCTest
-@testable import MarvelFeed
 
 class SignedHTTPClientDecoratorTest: XCTestCase {
     
@@ -64,6 +64,26 @@ class SignedHTTPClientDecoratorTest: XCTestCase {
         let queryString = "ts=\(timeStamp)&apikey=\(publicKey)&hash=\(hashString)"
         let expectedURL = URL(string: url.absoluteString + "?" + queryString)
         XCTAssertEqual(decoratee.urls, [expectedURL])
+    }
+    
+    func test_get_deliversResultToDecoratee() {
+        let (sut, decoratee) = makeSUT()
+        let expectedResult: HTTPClient.Result = .success((anyData(), anyHTTPURLResponse()))
+        
+        let exp = expectation(description: "wait for completion")
+        sut.get(from: anyURL()) { retrievedResult in
+            switch (retrievedResult, expectedResult) {
+            case let (.success(retrievedResult), .success(expectedResult)):
+                XCTAssertEqual(retrievedResult.0, expectedResult.0)
+                XCTAssertEqual(retrievedResult.1, expectedResult.1)
+            default:
+                XCTFail("Expected result \(expectedResult) got \(retrievedResult) instead")
+            }
+            exp.fulfill()
+        }
+        decoratee.complete(with: expectedResult)
+
+        wait(for: [exp], timeout: 0.1)
     }
     
     private func makeSUT(hashTransformer: @escaping (String) -> String = { _ in "any" } , date: Date = Date(), file: StaticString = #file, line: UInt = #line) -> (SignedHTTPClientDecorator, SpyHTTPClient)  {
