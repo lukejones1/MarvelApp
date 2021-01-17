@@ -24,7 +24,7 @@ class SignedHTTPClientDecorator: HTTPClient {
     }
     
     private var queryItems: [URLQueryItem] {
-        let timestamp = String(Int(currentDate.timeIntervalSinceReferenceDate))
+        let timestamp = currentDate.timestamp
         let hash = hashTransformer(timestamp + privateKey + publicKey)
         
         return [
@@ -32,6 +32,12 @@ class SignedHTTPClientDecorator: HTTPClient {
             URLQueryItem(name: "apikey", value: publicKey),
             URLQueryItem(name: "hash", value: hash)
         ]
+    }
+}
+
+private extension Date {
+    var timestamp: String {
+        return String(Int(self.timeIntervalSinceReferenceDate))
     }
 }
 
